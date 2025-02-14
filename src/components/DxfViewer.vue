@@ -45,6 +45,83 @@ export default {
         }
     },
 
+    mounted() {
+        this.dxfViewer = new DxfViewer(this.$refs.canvasContainer, this.options)
+        const Subscribe = eventName => {
+            this.dxfViewer.Subscribe(eventName, e => this.$emit("dxf-" + eventName, e))
+        }
+        for (const eventName of ["loaded", "cleared", "destroyed", "resized", "pointerdown",
+                                 "pointerup", "viewChanged", "message"]) {
+            Subscribe(eventName)
+        }
+
+        // Add mouse event listeners for selection
+        this.$refs.canvasContainer.addEventListener('mousedown', this._OnMouseDown);
+        this.$refs.canvasContainer.addEventListener('mousemove', this._OnMouseMove);
+        this.$refs.canvasContainer.addEventListener('mouseup', this._OnMouseUp);
+
+        this.selectionStart = null;
+        this.selectionEnd = null;
+    },
+
+    methods: {
+        async Load(url) {
+            this.isLoading = true
+            this.error = null
+            try {
+                await this.dxfViewer.Load({
+                    url,
+                    fonts: this.fonts,
+                    progressCbk: this._OnProgress.bind(this),
+                    workerFactory: DxfViewerWorker
+                })
+            } catch (error) {
+                console.warn(error)
+                this.error = error.toString()
+            } finally {
+                this.isLoading = false
+                this.progressText = null
+                this.progress = null
+                this.curProgressPhase = null
+            }
+        },
+
+        _OnMouseDown(event) {
+            this.selectionStart = { x: event.offsetX, y: event.offsetY };
+        },
+
+        _OnMouseMove(event) {
+            if (this.selectionStart) {
+                this.selectionEnd = { x: event.offsetX, y: event.offsetY };
+                // Optionally, draw the selection rectangle on the canvas
+            }
+        },
+
+        _OnMouseUp(event) {
+            if (this.selectionStart && this.selectionEnd) {
+                this._SelectLinesInRectangle(this.selectionStart, this.selectionEnd);
+                this.selectionStart = null;
+                this.selectionEnd = null;
+            }
+        },
+
+        _SelectLinesInRectangle(start, end) {
+            const minX = Math.min(start.x, end.x);
+            const maxX = Math.max(start.x, end.x);
+            const minY = Math.min(start.y, end.y);
+            const maxY = Math.max(start.y, end.y);
+
+            const lines = this.dxfViewer.GetLines(); // Assuming GetLines() returns all lines
+            const selectedLines = lines.filter(line => {
+                return line.start.x >= minX && line.start.x <= maxX &&
+                       line.start.y >= minY && line.start.y <= maxY &&
+                       line.end.x >= minX && line.end.x <= maxX &&
+                       line.end.y >= minY && line.end.y <= maxY;
+            });
+
+            console.log("Selected lines:", selectedLines);
+        }
+
     data() {
         return {
             isLoading: false,
