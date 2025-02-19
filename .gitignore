@@ -91,3 +91,4 @@ node_modules/
 dist/
 .history/
 .aider*
+src/dxf-viewer
