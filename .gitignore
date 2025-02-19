@@ -91,4 +91,5 @@ node_modules/
 dist/
 .history/
 .aider*
-# src/dxf-viewer
+src/dxf-viewer
+gpt-4o
